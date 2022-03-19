@@ -28,3 +28,6 @@ def vss_index(r: Redis, metadata_fields, datatypes, dimensions):
 
 def load_vss_obj(r: Redis, obj: dict, index: int):
     return r.hmset(_key_vss(index), obj)
+
+def add_embedding_to_vss_obj(r: Redis, index: int, embedding: bytes):
+    return r.hset(_key_vss(index), 'embedding', embedding)

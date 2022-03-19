@@ -1,10 +1,11 @@
 from glob import glob
+from time import perf_counter
 
 from prefect import Flow, unmapped
 from prefect.executors import DaskExecutor
 from cleo import Application, Command
 
-from vss.msft_loader import get_metadata, get_embeddings, batch_data, create_index, load_data
+from vss.msft_loader import load_metadata, load_embeddings
 
 
 class LoadCommand(Command):
@@ -20,16 +21,21 @@ class LoadCommand(Command):
         metadata_files = glob('data/metadata*')
         pipeline_interval = int(self.option('pipeline-interval'))
         redis_url = self.option('redis-url')
+        self.line(f'<info>Found</info> <comment>{len(metadata_files)}</comment> <info>metadata files</info>')
+        start = perf_counter()
         
-        print(metadata_files)
 
         with Flow('loader', executor=DaskExecutor()) as flow:
-            metadata_maps = get_metadata.map(metadata_files)
-            embedded_maps = get_embeddings.map(metadata_maps)
+            file_keys_and_offsets = load_metadata.map(*(metadata_files, unmapped(redis_url), unmapped(pipeline_interval)))
+            load_embeddings.map(*(file_keys_and_offsets, unmapped(redis_url), unmapped(pipeline_interval)))
+            # embedded_maps = get_embeddings.map(metadata_maps)
             # batched_maps = batch_data(embedded_maps, batch_size)
-            load_data.map(*(embedded_maps, unmapped(redis_url), unmapped(pipeline_interval)))
-
+            # load_data.map(*(embedded_maps, unmapped(redis_url), unmapped(pipeline_interval)))
+        
+        self.info('Handing off to Prefect/Dask')
         flow.run()
+        end = perf_counter()
+        self.line(f'<info>Flow Completed! Total Execution Time:</info> <comment>{end-start:0.2f} seconds</comment>')
 
       
         # embeddings_file = 'data/embeddings_0_0.pkl'
