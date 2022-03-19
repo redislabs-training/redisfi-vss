@@ -44,6 +44,7 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
         with r.pipeline(transaction=False) as pipe:
             offset = data_map['offset']
             counter = 0
+            total_counter = 0
             batch_start = perf_counter()
             for _metadata in data_map['records']:
                 
@@ -60,6 +61,7 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
 
                 offset += 1
                 counter += 1
+                total_counter += 1
             
             logger.info('executing any remaining records in pipeline')
             pipe.execute()
@@ -67,7 +69,7 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
             logger.info(f'execute completed! {counter} records loaded to redis in {batch_end-batch_start:0.2f} seconds')
 
         end = perf_counter()
-        logger.info(f'work complete! {counter} records to redis loaded in {end-start:0.2f} seconds')
+        logger.info(f'work complete! {total_counter} records to redis loaded in {end-start:0.2f} seconds')
 
 def _munge_metadata(metadata: DataFrame) -> DataFrame:
     metadata = __fill_nas(metadata)
@@ -134,6 +136,7 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
 
     with r.pipeline(transaction=False) as pipe:
         counter = 0
+        total_counter = 0
         batch_start = perf_counter()
         for embedding in embeddings:
             add_embedding_to_vss_obj(pipe, offset, _convert_embedding_to_bytes(embedding))
@@ -148,6 +151,7 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
 
             counter += 1
             offset += 1
+            total_counter += 1
 
         logger.info('executing any remaining embeddings in pipeline')
         pipe.execute()
@@ -156,7 +160,7 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
     
     
     end = perf_counter()
-    logger.info(f'work complete! {counter} embeddings loaded to redis in {end-start:0.2f} seconds')
+    logger.info(f'work complete! {total_counter} embeddings loaded to redis in {end-start:0.2f} seconds')
 
     
     # return metadata_map
