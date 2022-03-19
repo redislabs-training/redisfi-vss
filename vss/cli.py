@@ -15,7 +15,7 @@ class LoadCommand(Command):
     load_msft
         {--redis-url=redis://localhost:6379 : Location of the Redis to Load to}
         {--pipeline-interval=50000 : Amount to break data load into for pipeline}
-        {--embedding-pipeline-reduction-denominator=5 : Amount to divide pipeline by for embedding load}
+        {--embedding-pipeline-reduction-denominator=100 : Amount to divide pipeline by for embedding load}
     '''
     def handle(self):
 
@@ -27,11 +27,11 @@ class LoadCommand(Command):
         start = perf_counter()
         
 
-        with Flow('loader', executor=DaskExecutor(debug=True)) as flow:
+        with Flow('loader', executor=DaskExecutor()) as flow:
             file_keys_and_offsets = load_metadata.map(*(metadata_files, unmapped(redis_url), unmapped(pipeline_interval)))
             load_embeddings.map(*(file_keys_and_offsets, unmapped(redis_url), unmapped(pipeline_interval/reduction_factor)))
 
-        self.info('<error>Handing off to Prefect/Dask</error>')
+        self.line('<error>Handing off to Prefect/Dask</error>')
         flow.run()
         end = perf_counter()
         self.line(f'<info>Flow Completed! Total Execution Time:</info> <comment>{end-start:0.2f} seconds</comment>')
