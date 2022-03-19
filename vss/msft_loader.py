@@ -60,10 +60,10 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
                 offset += 1
                 counter += 1
             
-            # logger.info('executing batch')
-            # pipe.execute()
-            # batch_end = perf_counter()
-            # logger.info(f'execute completed! {counter % pipeline_interval} records loaded to redis in {batch_end-batch_start:0.2f} seconds')
+            logger.info('executing any remaining records in pipeline')
+            pipe.execute()
+            batch_end = perf_counter()
+            logger.info(f'execute completed! {counter % pipeline_interval} records loaded to redis in {batch_end-batch_start:0.2f} seconds')
 
         end = perf_counter()
         logger.info(f'work complete! {counter} records to redis loaded in {end-start:0.2f} seconds')
@@ -147,10 +147,10 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
             counter += 1
             offset += 1
 
-        # logger.info('executing batch')
-        # pipe.execute()
-        # batch_end = perf_counter()
-        # logger.info(f'execute completed! {counter % pipeline_interval} records loaded to redis in {batch_end-batch_start:0.2f} seconds')
+        logger.info('executing any remaining embeddings in pipeline')
+        pipe.execute()
+        batch_end = perf_counter()
+        logger.info(f'execute completed! {counter % pipeline_interval} embeddings loaded to redis in {batch_end-batch_start:0.2f} seconds')
     
     
     end = perf_counter()
