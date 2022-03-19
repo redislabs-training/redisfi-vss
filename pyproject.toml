@@ -15,6 +15,7 @@ numpy = "^1.22.3"
 redis = "^4.1.4"
 pyarrow = "^7.0.0"
 fastparquet = "^0.8.0"
+prefect = "^1.1.0"
 
 [tool.poetry.dev-dependencies]
 
