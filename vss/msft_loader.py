@@ -28,7 +28,7 @@ def load_metadata(metadata_file: str, redis_url: str, pipeline_interval: int) ->
     data_map = {}
     data_map['offset'] = metadata.index.start
     data_map['records'] = metadata.to_dict('records')
-
+    logger.info(f'file contained {len(data_map["records"])} records')
     _load_metadata_records(data_map, redis_url, pipeline_interval)
     
     file_key = metadata_file.split('_')[1].split('.')[0]
@@ -38,7 +38,7 @@ def load_metadata(metadata_file: str, redis_url: str, pipeline_interval: int) ->
 # @task
 def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: int):
         logger = prefect.context.get('logger')
-        logger.info(f'{len(data_map["records"])} records')
+        
         r = Redis.from_url(redis_url)
         start = perf_counter()
         with r.pipeline(transaction=False) as pipe:
@@ -52,10 +52,10 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
                 load_vss_obj(pipe, data, offset)
                 
                 if counter == pipeline_interval:
-                    logger.info('executing batch')
+                    logger.info('executing metadata batch')
                     pipe.execute()
                     batch_end = perf_counter()
-                    logger.info(f'execute completed! {counter} records loaded to redis in {batch_end-batch_start:0.2f} seconds')
+                    logger.info(f'metadata execute completed! {counter} records loaded to redis in {batch_end-batch_start:0.2f} seconds')
                     counter = 0
                     batch_start = perf_counter()
 
@@ -63,10 +63,10 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
                 counter += 1
                 total_counter += 1
             
-            logger.info('executing any remaining records in pipeline')
+            logger.info('executing any remaining metadata records in pipeline')
             pipe.execute()
             batch_end = perf_counter()
-            logger.info(f'execute completed! {counter} records loaded to redis in {batch_end-batch_start:0.2f} seconds')
+            logger.info(f'metadata execute completed! {counter} records loaded to redis in {batch_end-batch_start:0.2f} seconds')
 
         end = perf_counter()
         logger.info(f'work complete! {total_counter} records to redis loaded in {end-start:0.2f} seconds')
@@ -142,10 +142,10 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
             add_embedding_to_vss_obj(pipe, offset, _convert_embedding_to_bytes(embedding))
 
             if counter == pipeline_interval:
-                logger.info('executing batch')
+                logger.info('executing embedding batch')
                 pipe.execute()
                 batch_end = perf_counter()
-                logger.info(f'execute completed! {counter} embeddings loaded to redis in {batch_end-batch_start:0.2f} seconds')
+                logger.info(f'embedding execute completed! {counter} embeddings loaded to redis in {batch_end-batch_start:0.2f} seconds')
                 counter = 0
                 batch_start = perf_counter()
 
@@ -156,7 +156,7 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
         logger.info('executing any remaining embeddings in pipeline')
         pipe.execute()
         batch_end = perf_counter()
-        logger.info(f'execute completed! {counter} embeddings loaded to redis in {batch_end-batch_start:0.2f} seconds')
+        logger.info(f'embedding execute completed! {counter} embeddings loaded to redis in {batch_end-batch_start:0.2f} seconds')
     
     
     end = perf_counter()
