@@ -1,6 +1,6 @@
 from time import perf_counter
 from pickle import load
-from numpy import datetime64, float32, ndarray
+from numpy import datetime64
 from pandas import read_parquet, DatetimeIndex, DataFrame
 from redis import Redis
 
@@ -28,7 +28,7 @@ def load_metadata(metadata_file: str, redis_url: str, pipeline_interval: int) ->
     data_map = {}
     data_map['offset'] = metadata.index.start
     data_map['records'] = metadata.to_dict('records')
-    logger.debug(f'file contained {len(data_map["records"])} records')
+    logger.info(f'file contained {len(data_map["records"])} records')
     _load_metadata_records(data_map, redis_url, pipeline_interval)
     
     file_key = metadata_file.split('_')[1].split('.')[0]
@@ -69,7 +69,7 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
             logger.debug(f'metadata execute completed! {counter} records loaded to redis in {batch_end-batch_start:0.2f} seconds')
 
         end = perf_counter()
-        logger.info(f'work complete! {total_counter} records to redis loaded in {end-start:0.2f} seconds')
+        logger.info(f'work complete! {total_counter} records loaded to redis in {end-start:0.2f} seconds')
 
 def _munge_metadata(metadata: DataFrame) -> DataFrame:
     metadata = __fill_nas(metadata)
@@ -139,7 +139,7 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
         total_counter = 0
         batch_start = perf_counter()
         for embedding in embeddings:
-            add_embedding_to_vss_obj(pipe, offset, _convert_embedding_to_bytes(embedding))
+            add_embedding_to_vss_obj(pipe, offset, embedding)
 
             if counter == pipeline_interval:
                 logger.debug('executing embedding batch')
@@ -165,8 +165,6 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
     
     # return metadata_map
 
-def _convert_embedding_to_bytes(embedding: ndarray):
-    return embedding.astype(float32).tobytes()
 
 
 

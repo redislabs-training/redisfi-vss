@@ -16,6 +16,8 @@ redis = "^4.1.4"
 pyarrow = "^7.0.0"
 fastparquet = "^0.8.0"
 prefect = "^1.1.0"
+Flask = "^2.0.3"
+gunicorn = "^20.1.0"
 
 [tool.poetry.dev-dependencies]
 
