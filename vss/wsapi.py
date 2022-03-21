@@ -63,7 +63,7 @@ def run(debug=False, redis_url='redis://'):
         with Popen(['poetry', 'run', 'python3', 'vss/wsapi.py'], env=env) as _app:
             _app.communicate()
     else:
-        with Popen(['poetry', 'run', 'gunicorn', '-b', '0.0.0.0:7777', '-w', '4', 'vss.wsapi:app'], env=env) as _app:
+        with Popen(['poetry', 'run', 'gunicorn', '-b', '0.0.0.0:7777', 'vss.wsapi:app'], env=env) as _app:
             _app.communicate()
 
 if __name__ == '__main__':
