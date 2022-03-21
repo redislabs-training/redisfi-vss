@@ -12,7 +12,7 @@ from vss import db as DB
 
 SCORE_URL = 'https://mpnetemb.eastus2.inference.ml.azure.com/score'
 SCORE_API_KEY = 'Qimsm7lN1kTWdS7heH2MbT9HPuo7vyOv'
-K_DEFAULT = 10
+K_DEFAULT = 25
 
 app = Flask(__name__)
 app.config['REDIS'] = Redis.from_url(environ.get('REDIS_URL', 'redis://localhost:6379'))
@@ -25,8 +25,9 @@ def search():
     if term is not None:
         term = get_embedding_for_value(term)
 
-    results = DB.query(app.config['REDIS'], term, _filter, k)
-    return dumps(results)
+    results, total, duration = DB.query(app.config['REDIS'], term, _filter, k)
+    ret = {'results':results, 'metrics':{'duration':duration, 'total':total}}
+    return dumps(ret)
 
 @app.route('/healthcheck')
 def healthcheck():
@@ -65,6 +66,5 @@ def run(debug=False, redis_url='redis://'):
         with Popen(['poetry', 'run', 'gunicorn', '-b', '0.0.0.0:7777', '-w', '4', 'vss.wsapi:app'], env=env) as _app:
             _app.communicate()
 
-
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=7777)

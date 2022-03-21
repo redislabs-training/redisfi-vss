@@ -33,9 +33,9 @@ def query(r: Redis, vector: ndarray=None, _filter=None, k=10):
         sort_by = '__embedding_score'
         asc = True
 
-    q = Query(query_str).paging(0,k).sort_by(sort_by, asc=asc).return_fields('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
+    q = Query(query_str).paging(0, k).sort_by(sort_by, asc=asc).return_fields('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
     results = r.ft(_key_vss('idx')).search(q, params)
-    return [result.__dict__ for result in results.docs]
+    return [result.__dict__ for result in results.docs], results.total, results.duration
 
 def _convert_embedding_to_bytes(embedding: ndarray):
     return embedding.astype(float32).tobytes()
