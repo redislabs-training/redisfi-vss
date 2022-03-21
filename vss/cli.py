@@ -15,7 +15,7 @@ class LoadCommand(Command):
     Load the VSS data into Redis
 
     load
-        {--r|redis-url=redis://localhost:6379 : Location of the Redis to Load to}
+        {--r|redis-url=redis://localhost:6379 : Location of the Redis to Load to - can also set with VSS_REDIS_URL env var}
         {--pipeline-interval=50000 : Amount to break data load into for pipeline}
         {--embedding-pipeline-reduction-denominator=3 : Amount to divide pipeline by for embedding load}
     '''
@@ -25,7 +25,7 @@ class LoadCommand(Command):
         pipeline_interval = int(self.option('pipeline-interval'))
         reduction_factor = int(self.option('embedding-pipeline-reduction-denominator'))
 
-        redis_url = environ.get('REDIS_URL', self.option('redis-url'))
+        redis_url = environ.get('VSS_REDIS_URL', self.option('redis-url'))
 
         self.line(f'<info>Found</info> <comment>{len(metadata_files)}</comment> <info>metadata files</info>')
         start = perf_counter()
@@ -45,11 +45,11 @@ class RunCommand(Command):
 
     run
         {--debug : Runs the Debug Server}
-        {--H|redis-url=redis://localhost:6379 : Redis URL - can also set with REDIS_URL env var}
+        {--H|redis-url=redis://localhost:6379 : Redis URL - can also set with VSS_REDIS_URL env var}
     '''
     def handle(self):
         debug = self.option('debug')
-        redis_url = environ.get('REDIS_URL', self.option('redis-url'))
+        redis_url = environ.get('VSS_REDIS_URL', self.option('redis-url'))
         self.line(f'<info>Redis URL:</info> <comment>{redis_url}</comment>')
         
         run_wsapi(debug=debug, redis_url=redis_url)

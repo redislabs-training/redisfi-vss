@@ -14,7 +14,7 @@ def query(r: Redis, vector: ndarray=None, _filter=None, k=10):
     if _filter is None and vector is not None:
         # only a vector to search for
         vector_bytes = _convert_embedding_to_bytes(vector)
-        params = {'K':k, 'VECTOR':vector_bytes }
+        params = {'K':k, 'VECTOR':vector_bytes}
         query_str = f'*=>[TOP_K $K @embedding $VECTOR]'
         sort_by = '__embedding_score'
         asc = True
@@ -29,11 +29,11 @@ def query(r: Redis, vector: ndarray=None, _filter=None, k=10):
         # search for both
         query_str = f'({_filter})=>[TOP_K $K @embedding $VECTOR]'
         vector_bytes = _convert_embedding_to_bytes(vector)
-        params = {'K':k, 'VECTOR':vector_bytes }
+        params = {'K':k, 'VECTOR':vector_bytes}
         sort_by = '__embedding_score'
         asc = True
 
-    q = Query(query_str).paging(0,k).sort_by(sort_by, asc=asc)
+    q = Query(query_str).paging(0,k).sort_by(sort_by, asc=asc).return_fields('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
     results = r.ft(_key_vss('idx')).search(q, params)
     return [result.__dict__ for result in results.docs]
 
