@@ -12,8 +12,9 @@ from vss import db as DB
 
 SCORE_URL = 'https://mpnetemb.eastus2.inference.ml.azure.com/score'
 SCORE_API_KEY = 'Qimsm7lN1kTWdS7heH2MbT9HPuo7vyOv'
-K_DEFAULT = 2
+K = 5
 LIMIT_DEFAULT = 1000
+FACET_LIMIT = 1000000
 
 app = Flask(__name__)
 app.config['REDIS'] = Redis.from_url(environ.get('REDIS_URL', 'redis://localhost:6379'))
@@ -21,34 +22,54 @@ app.config['REDIS'] = Redis.from_url(environ.get('REDIS_URL', 'redis://localhost
 @app.route('/')
 def search():
     _filter = request.args.get('filter')
-    k = request.args.get('k', K_DEFAULT)
     limit = request.args.get('limit', LIMIT_DEFAULT)
     term = request.args.get('term')
     if term is not None:
-        term = get_embedding_for_value(term)
+        term = get_embedding(term)
 
-    results, total, duration = DB.query_filings(app.config['REDIS'], term, _filter, k, limit)
+    results, total, duration = DB.query_filings(app.config['REDIS'], term, _filter, K, limit)
     ret = {'results':results, 'metrics':{'duration':duration, 'total':total}}
     return dumps(ret)
 
 @app.route('/facets')
 def facets():
     term = request.args.get('term')
+    facets = DB.get_facets_for_term(app.config['REDIS'], term)
+    if facets is not None:
+        return facets
+
+    vector = get_embedding(term)
+    results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, k=K, limit=FACET_LIMIT)
+
+    facets = {}
+    for result in results:
+        facets[result['COMPANY_NAME']] = facets.get(result['COMPANY_NAME'], 0) + 1
+    
+    DB.set_facets_for_term(app.config['REDIS'], term, facets)
+
+    return facets
 
 @app.route('/healthcheck')
 def healthcheck():
     return str(app.config['REDIS'].ping())
 
-def get_embedding_for_value(val: str):
+def get_embedding(term: str):
+    embedding = DB.get_embedding_for_term(app.config['REDIS'], term)
+    if embedding is not None:
+        return embedding
+
     ## This doesn't work with requests and I couldn't figure out why
     headers = {'Content-Type':'application/json', 'Authorization':f'Bearer {SCORE_API_KEY}'}
-    data = {'data':val}
+    data = {'data':term}
     body = str.encode(dumps(data))
     req = Request(SCORE_URL, body, headers)
 
     try:
         response = urlopen(req)
-        return np.fromstring(load(response)[1:-1], dtype=np.float32, sep=',')
+        embedding = np.fromstring(load(response)[1:-1], dtype=np.float32, sep=',')
+        
+        DB.set_embedding_for_term(app.config['REDIS'], term, embedding)
+        return embedding
     except HTTPError as error:
         print("The request failed with status code: " + str(error.code))
         print(error.info())

@@ -1,18 +1,31 @@
 from numpy import ndarray, float32
 from redis import Redis
 from redis.commands.search.query import Query
+from redis.commands.json.path import Path
+
+RETURN_FIELDS = ('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
 
 _key_filing = lambda index: f'filing:{index}'
-_key_term = lambda term: f'term:{term}'
+_key_term_facets = lambda term: f'term:{term}:facets'
+_key_term_vector = lambda term: f'term:{term}:vector'
 
 def _convert_embedding_to_bytes(embedding: ndarray):
-    return embedding.astype(float32).tobytes()
+    if type(embedding) == bytes:
+        return embedding
+    else:
+        return embedding.astype(float32).tobytes()
+
+def get_facets_for_term(r: Redis, term: str):
+    return r.json().get(_key_term_facets(term))
+
+def set_facets_for_term(r: Redis, term: str, obj: dict):
+    return r.json().set(_key_term_facets(term), Path.rootPath(), obj)
 
 def get_embedding_for_term(r: Redis, term: str):
-    return r.hget(_key_term(term), 'embedding')
+    return r.get(_key_term_vector(term))
 
 def set_embedding_for_term(r: Redis, term: str, embedding: ndarray):
-    return r.hset(_key_term(term), 'embedding', _convert_embedding_to_bytes(embedding))
+    return r.set(_key_term_vector(term), _convert_embedding_to_bytes(embedding))
 
 def set_filing_obj(r: Redis, obj: dict, index: int):
     return r.hmset(_key_filing(index), obj)
@@ -20,12 +33,13 @@ def set_filing_obj(r: Redis, obj: dict, index: int):
 def set_embedding_on_filing_obj(r: Redis, index: int, embedding: ndarray):
     return r.hset(_key_filing(index), 'embedding', _convert_embedding_to_bytes(embedding))
 
-def query_filings(r: Redis, vector: ndarray=None, _filter=None, k=10, limit=20000000):
+def query_filings(r: Redis, vector=None, _filter=None, k=10, limit=10):
+
     if _filter is None and vector is not None:
         # only a vector to search for
+        query_str = f'*=>[TOP_K $K @embedding $VECTOR]'
         vector_bytes = _convert_embedding_to_bytes(vector)
         params = {'K':k, 'VECTOR':vector_bytes}
-        query_str = f'*=>[TOP_K $K @embedding $VECTOR]'
         sort_by = '__embedding_score'
         asc = True
 
@@ -43,7 +57,7 @@ def query_filings(r: Redis, vector: ndarray=None, _filter=None, k=10, limit=2000
         sort_by = '__embedding_score'
         asc = True
 
-    q = Query(query_str).paging(0, limit).sort_by(sort_by, asc=asc).return_fields('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
+    q = Query(query_str).paging(0, limit).sort_by(sort_by, asc=asc).return_fields(*RETURN_FIELDS)
     results = r.ft(_key_filing('idx')).search(q, params)
     return [result.__dict__ for result in results.docs], results.total, results.duration
 

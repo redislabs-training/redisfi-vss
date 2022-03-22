@@ -9,7 +9,7 @@ from prefect import task
 
 from vss.db import set_filing_obj, set_embedding_on_filing_obj
 
-# "FT.CREATE" "vss:idx" "SCHEMA" "para_tag" "TEXT" "para_contents" "TEXT" "line_word_count" "TEXT" "COMPANY_NAME" "TEXT" "FILING_TYPE" "TEXT" "SIC_INDUSTRY" "TEXT" "DOC_COUNT" "NUMERIC" "CIK_METADATA" "NUMERIC" "all_capital" "NUMERIC" "FILED_DATE_YEAR" "NUMERIC" "FILED_DATE_MONTH" "NUMERIC" "FILED_DATE_DAY" "NUMERIC" "embedding" "VECTOR" "HNSW" "12" "TYPE" "FLOAT32" "DIM" "768" "DISTANCE_METRIC" "COSINE" "INITIAL_CAP" "150000" "M" "60" "EF_CONSTRUCTION" "500"
+# "FT.CREATE" "filing:idx" "SCHEMA" "para_tag" "TEXT" "para_contents" "TEXT" "line_word_count" "TEXT" "COMPANY_NAME" "TEXT" "FILING_TYPE" "TEXT" "SIC_INDUSTRY" "TEXT" "DOC_COUNT" "NUMERIC" "CIK_METADATA" "NUMERIC" "all_capital" "NUMERIC" "FILED_DATE_YEAR" "NUMERIC" "FILED_DATE_MONTH" "NUMERIC" "FILED_DATE_DAY" "NUMERIC" "embedding" "VECTOR" "HNSW" "12" "TYPE" "FLOAT32" "DIM" "768" "DISTANCE_METRIC" "COSINE" "INITIAL_CAP" "150000" "M" "60" "EF_CONSTRUCTION" "500"
 VECTOR_DIMENSIONS = 768
 METADATA_NA_COLUMNS=['para_tag','COMPANY_NAME','SIC_INDUSTRY','SIC','FILING_TYPE']
 METADATA_INDEX_COLUMNS=['para_tag','para_contents','line_word_count','COMPANY_NAME','FILING_TYPE','SIC_INDUSTRY','DOC_COUNT','CIK_METADATA','all_capital','FILED_DATE_YEAR','FILED_DATE_MONTH','FILED_DATE_DAY']
@@ -28,7 +28,7 @@ def load_metadata(metadata_file: str, redis_url: str, pipeline_interval: int) ->
     data_map = {}
     data_map['offset'] = metadata.index.start
     data_map['records'] = metadata.to_dict('records')
-    logger.info(f'file contained {len(data_map["records"])} records')
+    logger.info(f'file contained {len(data_map["records"])} records - transforming and loading into redis')
     _load_metadata_records(data_map, redis_url, pipeline_interval)
     
     file_key = metadata_file.split('_')[1].split('.')[0]
@@ -40,7 +40,7 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
         logger = prefect.context.get('logger')
         
         r = Redis.from_url(redis_url)
-        start = perf_counter()
+        start = perf_counter()  
         with r.pipeline(transaction=False) as pipe:
             offset = data_map['offset']
             counter = 0
