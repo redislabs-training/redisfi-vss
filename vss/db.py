@@ -2,15 +2,25 @@ from numpy import ndarray, float32
 from redis import Redis
 from redis.commands.search.query import Query
 
-_key_vss = lambda index: f'vss:{index}'
+_key_filing = lambda index: f'filing:{index}'
+_key_term = lambda term: f'term:{term}'
 
-def load_vss_obj(r: Redis, obj: dict, index: int):
-    return r.hmset(_key_vss(index), obj)
+def _convert_embedding_to_bytes(embedding: ndarray):
+    return embedding.astype(float32).tobytes()
 
-def add_embedding_to_vss_obj(r: Redis, index: int, embedding: ndarray):
-    return r.hset(_key_vss(index), 'embedding', _convert_embedding_to_bytes(embedding))
+def get_embedding_for_term(r: Redis, term: str):
+    return r.hget(_key_term(term), 'embedding')
 
-def query(r: Redis, vector: ndarray=None, _filter=None, k=10):
+def set_embedding_for_term(r: Redis, term: str, embedding: ndarray):
+    return r.hset(_key_term(term), 'embedding', _convert_embedding_to_bytes(embedding))
+
+def set_filing_obj(r: Redis, obj: dict, index: int):
+    return r.hmset(_key_filing(index), obj)
+
+def set_embedding_on_filing_obj(r: Redis, index: int, embedding: ndarray):
+    return r.hset(_key_filing(index), 'embedding', _convert_embedding_to_bytes(embedding))
+
+def query_filings(r: Redis, vector: ndarray=None, _filter=None, k=10, limit=20000000):
     if _filter is None and vector is not None:
         # only a vector to search for
         vector_bytes = _convert_embedding_to_bytes(vector)
@@ -33,12 +43,9 @@ def query(r: Redis, vector: ndarray=None, _filter=None, k=10):
         sort_by = '__embedding_score'
         asc = True
 
-    q = Query(query_str).paging(0, k).sort_by(sort_by, asc=asc).return_fields('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
-    results = r.ft(_key_vss('idx')).search(q, params)
+    q = Query(query_str).paging(0, limit).sort_by(sort_by, asc=asc).return_fields('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
+    results = r.ft(_key_filing('idx')).search(q, params)
     return [result.__dict__ for result in results.docs], results.total, results.duration
-
-def _convert_embedding_to_bytes(embedding: ndarray):
-    return embedding.astype(float32).tobytes()
 
 # def vss_index(r: Redis, metadata_fields, datatypes, dimensions):
 #     idx =  r.ft(_key_vss('idx'))

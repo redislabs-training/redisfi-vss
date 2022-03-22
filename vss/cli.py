@@ -17,7 +17,7 @@ class LoadCommand(Command):
     load
         {--r|redis-url=redis://localhost:6379 : Location of the Redis to Load to - can also set with VSS_REDIS_URL env var}
         {--pipeline-interval=50000 : Amount to break data load into for pipeline}
-        {--embedding-pipeline-reduction-denominator=3 : Amount to divide pipeline by for embedding load}
+        {--reduction-factor=3 : Amount to divide pipeline by for embedding load}
     '''
     def handle(self):
 

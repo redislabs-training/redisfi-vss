@@ -7,7 +7,7 @@ from redis import Redis
 import prefect
 from prefect import task
 
-from vss.db import load_vss_obj, add_embedding_to_vss_obj
+from vss.db import set_filing_obj, set_embedding_on_filing_obj
 
 # "FT.CREATE" "vss:idx" "SCHEMA" "para_tag" "TEXT" "para_contents" "TEXT" "line_word_count" "TEXT" "COMPANY_NAME" "TEXT" "FILING_TYPE" "TEXT" "SIC_INDUSTRY" "TEXT" "DOC_COUNT" "NUMERIC" "CIK_METADATA" "NUMERIC" "all_capital" "NUMERIC" "FILED_DATE_YEAR" "NUMERIC" "FILED_DATE_MONTH" "NUMERIC" "FILED_DATE_DAY" "NUMERIC" "embedding" "VECTOR" "HNSW" "12" "TYPE" "FLOAT32" "DIM" "768" "DISTANCE_METRIC" "COSINE" "INITIAL_CAP" "150000" "M" "60" "EF_CONSTRUCTION" "500"
 VECTOR_DIMENSIONS = 768
@@ -49,7 +49,7 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
             for _metadata in data_map['records']:
                 
                 data = __build_object_from_row(_metadata)
-                load_vss_obj(pipe, data, offset)
+                set_filing_obj(pipe, data, offset)
                 
                 if counter == pipeline_interval:
                     logger.debug('executing metadata batch')
@@ -139,7 +139,7 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
         total_counter = 0
         batch_start = perf_counter()
         for embedding in embeddings:
-            add_embedding_to_vss_obj(pipe, offset, embedding)
+            set_embedding_on_filing_obj(pipe, offset, embedding)
 
             if counter == pipeline_interval:
                 logger.debug('executing embedding batch')

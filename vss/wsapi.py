@@ -12,7 +12,8 @@ from vss import db as DB
 
 SCORE_URL = 'https://mpnetemb.eastus2.inference.ml.azure.com/score'
 SCORE_API_KEY = 'Qimsm7lN1kTWdS7heH2MbT9HPuo7vyOv'
-K_DEFAULT = 25
+K_DEFAULT = 2
+LIMIT_DEFAULT = 1000
 
 app = Flask(__name__)
 app.config['REDIS'] = Redis.from_url(environ.get('REDIS_URL', 'redis://localhost:6379'))
@@ -21,13 +22,18 @@ app.config['REDIS'] = Redis.from_url(environ.get('REDIS_URL', 'redis://localhost
 def search():
     _filter = request.args.get('filter')
     k = request.args.get('k', K_DEFAULT)
+    limit = request.args.get('limit', LIMIT_DEFAULT)
     term = request.args.get('term')
     if term is not None:
         term = get_embedding_for_value(term)
 
-    results, total, duration = DB.query(app.config['REDIS'], term, _filter, k)
+    results, total, duration = DB.query_filings(app.config['REDIS'], term, _filter, k, limit)
     ret = {'results':results, 'metrics':{'duration':duration, 'total':total}}
     return dumps(ret)
+
+@app.route('/facets')
+def facets():
+    term = request.args.get('term')
 
 @app.route('/healthcheck')
 def healthcheck():
