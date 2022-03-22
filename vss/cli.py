@@ -23,7 +23,7 @@ class LoadCommand(Command):
 
         metadata_files = glob('data/metadata*')
         pipeline_interval = int(self.option('pipeline-interval'))
-        reduction_factor = int(self.option('embedding-pipeline-reduction-denominator'))
+        reduction_factor = int(self.option('reduction-factor'))
 
         redis_url = environ.get('VSS_REDIS_URL', self.option('redis-url'))
 
