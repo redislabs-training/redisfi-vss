@@ -24,6 +24,9 @@ def search():
     _filter = request.args.get('filter')
     limit = request.args.get('limit', LIMIT_DEFAULT)
     term = request.args.get('term')
+    
+    print(f'term: {term} | filter: {_filter}')
+
     if term is not None:
         term = get_embedding(term)
 
@@ -34,20 +37,20 @@ def search():
 @app.route('/facets')
 def facets():
     term = request.args.get('term')
-    facets = DB.get_facets_for_term(app.config['REDIS'], term)
-    if facets is not None:
-        return facets
+    _facets = DB.get_facets_for_term(app.config['REDIS'], term)
+    if _facets is not None:
+        return _facets
 
     vector = get_embedding(term)
     results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, k=K, limit=FACET_LIMIT)
 
-    facets = {}
+    _facets = {}
     for result in results:
-        facets[result['COMPANY_NAME']] = facets.get(result['COMPANY_NAME'], 0) + 1
+        _facets[result['COMPANY_NAME']] = _facets.get(result['COMPANY_NAME'], 0) + 1
     
-    DB.set_facets_for_term(app.config['REDIS'], term, facets)
+    DB.set_facets_for_term(app.config['REDIS'], term, _facets)
 
-    return facets
+    return _facets
 
 @app.route('/healthcheck')
 def healthcheck():
