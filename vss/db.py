@@ -1,3 +1,4 @@
+from time import time
 from numpy import ndarray, float32
 from redis import Redis
 from redis.commands.search.query import Query
@@ -9,6 +10,7 @@ RETURN_FIELDS = ('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
 _key_filing = lambda index: f'filing:{index}'
 _key_term_facets = lambda term: f'term:{term}:facets'
 _key_term_vector = lambda term: f'term:{term}:vector'
+_key_semaphore = lambda: f'semaphore:{int(time())}'
 
 def _convert_embedding_to_bytes(embedding: ndarray):
     if type(embedding) == bytes:
@@ -18,6 +20,16 @@ def _convert_embedding_to_bytes(embedding: ndarray):
 
 def _build_search_query(index: SearchCommands, query: Query, args=None):
     return ' '.join([SEARCH_CMD] + list(map(str, index._mk_query_args(query, args)[0])))
+
+def semaphore(r: Redis, max: int):
+    key = _key_semaphore()
+    if r.incr(key) > max:
+        return False
+    
+    if r.ttl(key) == -1:
+        r.expire(key, 1)
+
+    return True
 
 def get_facets_for_term(r: Redis, term: str):
     return r.json().get(_key_term_facets(term))

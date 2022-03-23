@@ -6,9 +6,42 @@ from prefect import Flow, unmapped
 from prefect.executors import DaskExecutor
 from cleo import Application, Command
 
-from vss.msft_loader import load_metadata, load_embeddings
+from vss.msft_loader import (load_metadata,
+                             load_embeddings, 
+                             get_filenames_from_parquets, 
+                             flatten_filename_sets, 
+                             get_html_file_from_raw_file,
+                             write_filemap_file)
+
 from vss.wsapi import run as run_wsapi
 
+class CreateHTMLFileMap(Command):
+    '''
+    Go get the HTML file names for the reports from the raw text reports 
+
+    create_filemap
+        {--r|redis-url=redis://localhost:6379 : Location of the Redis to Load to - can also set with VSS_REDIS_URL env var}
+        {--o|output-location=data/filemap.json : Location to store the output file}
+    '''
+    def handle(self):
+        output_location = self.option('output-location')
+        map_file = glob(output_location)
+        if map_file and not self.confirm(f'Existing Map File Found at {output_location} - Recreate?', False):
+            self.info('Ok, thanks. Have a good day!')
+            return
+    
+        metadata_files = glob('data/metadata*')
+        self.line(f'<info>Found</info> <comment>{len(metadata_files)}</comment> <info>metadata files</info>')
+        redis_url = self.option('redis-url')
+
+        with Flow('filemap', executor=DaskExecutor()) as flow:
+            filenames_batched = get_filenames_from_parquets.map(metadata_files)
+            filenames_flattened = flatten_filename_sets(filenames_batched)
+            file_map = get_html_file_from_raw_file.map(filenames_flattened, unmapped(redis_url))
+            write_filemap_file(file_map, output_location)
+
+
+        flow.register('redisfi')
 
 class LoadCommand(Command):
     '''
@@ -59,4 +92,5 @@ def run():
     app = Application(name='VSS')
     app.add(LoadCommand())
     app.add(RunCommand())
+    app.add(CreateHTMLFileMap())
     app.run()

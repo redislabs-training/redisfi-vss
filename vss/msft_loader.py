@@ -1,5 +1,11 @@
-from time import perf_counter
+from re import search
+from datetime import timedelta
+from time import perf_counter, sleep
 from pickle import load
+from random import triangular
+from json import dumps
+
+import requests
 from numpy import datetime64
 from pandas import read_parquet, DatetimeIndex, DataFrame
 from redis import Redis
@@ -7,12 +13,15 @@ from redis import Redis
 import prefect
 from prefect import task
 
-from vss.db import set_filing_obj, set_embedding_on_filing_obj
+from vss.db import set_filing_obj, set_embedding_on_filing_obj, semaphore
 
 # "FT.CREATE" "filing:idx" "SCHEMA" "para_tag" "TEXT" "para_contents" "TEXT" "line_word_count" "TEXT" "COMPANY_NAME" "TEXT" "FILING_TYPE" "TEXT" "SIC_INDUSTRY" "TEXT" "DOC_COUNT" "NUMERIC" "CIK_METADATA" "NUMERIC" "all_capital" "NUMERIC" "FILED_DATE_YEAR" "NUMERIC" "FILED_DATE_MONTH" "NUMERIC" "FILED_DATE_DAY" "NUMERIC" "embedding" "VECTOR" "HNSW" "12" "TYPE" "FLOAT32" "DIM" "768" "DISTANCE_METRIC" "COSINE" "INITIAL_CAP" "150000" "M" "60" "EF_CONSTRUCTION" "500"
 VECTOR_DIMENSIONS = 768
 METADATA_NA_COLUMNS=['para_tag','COMPANY_NAME','SIC_INDUSTRY','SIC','FILING_TYPE']
 METADATA_INDEX_COLUMNS=['para_tag','para_contents','line_word_count','COMPANY_NAME','FILING_TYPE','SIC_INDUSTRY','DOC_COUNT','CIK_METADATA','all_capital','FILED_DATE_YEAR','FILED_DATE_MONTH','FILED_DATE_DAY']
+SEC_MAX_PER_SECOND = 5
+SEC_URL_BASE = 'https://sec.gov/Archives/'
+RATE_LIMIT_ATTEMPT_MAX = 120
 
 
                             ######################################
@@ -161,48 +170,62 @@ def load_embeddings(args:tuple, redis_url: str, pipeline_interval: int):
     end = perf_counter()
     logger.info(f'work complete! {total_counter} embeddings loaded to redis in {end-start:0.2f} seconds')
 
-    
-    # return metadata_map
+                                            ##############################
+                                            ## CREATE FILENAME MAP FILE ##
+                                            ##############################
+@task 
+def get_filenames_from_parquets(filename):
+    df = read_parquet(filename)
+    data = df.to_dict('records')
 
+    filenames = set()
+    for row in data:
+        filenames.add(row['FILE_NAME'])
 
+    return filenames
 
+@task
+def flatten_filename_sets(list_of_sets):
+    grand_set = set()
 
+    for _set in list_of_sets:
+        grand_set = grand_set.union(_set)
 
+    return list(grand_set)
 
+@task(max_retries=5, retry_delay=timedelta(seconds=20), timeout=60)
+def get_html_file_from_raw_file(raw_file_url: str, redis_url: str) -> tuple:
+    logger = prefect.context.get('logger')
+    r = Redis.from_url(redis_url)
+    attempts = 0
+    while True:
+        if semaphore(r, SEC_MAX_PER_SECOND):
+            logger.info(raw_file_url)
+            resp = requests.get(SEC_URL_BASE + raw_file_url, 
+                                headers={'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.82 Safari/537.36'},
+                                timeout=30)
 
-# @task
-# def create_index(redis_url: str, datatypes):
-#     logger = prefect.context.get('logger')
-#     logger.info(f'redis url: {redis_url}, datatypes: {datatypes}')
-#     r = Redis.from_url(redis_url)
-#     vss_index(r, METADATA_INDEX_COLUMNS, datatypes, VECTOR_DIMENSIONS)
+            resp.raise_for_status()
+            
+            filename = search('<FILENAME>(.*)', resp.text).group(1)
+            if not filename:
+                raise Exception(f'filename not found in raw file: {raw_file_url}')
 
-# @task
-# def batch_data(data_maps: dict, batch_size: int):
-#     logger = prefect.context.get('logger')
-#     logger.info(len(data_maps))
-#     full = []
-    
-#     for data_map in data_maps:
-#         records = data_map.pop('records')
-#         embeddings = data_map.pop('embeddings')
-#         batch = data_map.copy()
+            url_parts, _file = raw_file_url.split('/')[0:-1], raw_file_url.split('/')[-1]
+            url_parts.append(_file.split('.')[0].replace('-', ''))
+            url_parts.append(filename)
+            
+            return raw_file_url, '/'.join(url_parts)
+        else:
+            if attempts < RATE_LIMIT_ATTEMPT_MAX:
+                attempts += 1
+                logger.info('waiting!')
+                sleep(triangular(.25, 1.5))
+            else:
+                raise Exception('Max Attempts Reached')
 
-#         batch_records = []
-#         counter = 0
-
-#         for record, embedding in zip(records, embeddings):
-#             batch_records.append(record)
-#             if (counter + 1) % batch_size == 0:
-#                 batch['records'] = batch_records
-#                 batch['embeddings'] = embedding
-#                 batch['offset'] += counter
-
-#                 full.append(batch)
-#                 batch = data_map.copy()
-#                 batch_records = []
-
-#             counter += 1
-    
-#     logger.info(f'created {len(full)} batches. {type(full[0])}')
-#     return full
+@task
+def write_filemap_file(file_map, file_location):
+    file_map_dict = dict(file_map)
+    with open(file_location, 'w') as f:
+        f.write(dumps(file_map_dict))
