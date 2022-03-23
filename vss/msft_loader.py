@@ -34,8 +34,8 @@ def load_metadata(metadata_file: str, redis_url: str, pipeline_interval: int) ->
     file_key = metadata_file.split('_')[1].split('.')[0]
 
     return (file_key, data_map['offset'])
- 
-# @task
+
+
 def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: int):
         logger = prefect.context.get('logger')
         
@@ -46,8 +46,8 @@ def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: in
             counter = 0
             total_counter = 0
             batch_start = perf_counter()
-            for _metadata in data_map['records']:
-                
+            
+            for _metadata in data_map['records']:    
                 data = __build_object_from_row(_metadata)
                 set_filing_obj(pipe, data, offset)
                 
@@ -91,7 +91,6 @@ def __build_object_from_row(row: dict) -> dict:
     obj['FILED_DATE_MONTH'] = int(row['FILED_DATE_MONTH'])
     obj['len_text'] = int(row['len_text'])
     obj['all_capital'] = int(row['all_capital'])
-    # obj['embedding'] = _convert_embedding_to_bytes(embedding)
 
     return obj
 

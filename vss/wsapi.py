@@ -12,9 +12,8 @@ from vss import db as DB
 
 SCORE_URL = 'https://mpnetemb.eastus2.inference.ml.azure.com/score'
 SCORE_API_KEY = 'Qimsm7lN1kTWdS7heH2MbT9HPuo7vyOv'
-K = 5
-LIMIT_DEFAULT = 1000
-FACET_LIMIT = 1000000
+SEARCH_K = 1000
+FACETS_K = 15000
 
 app = Flask(__name__)
 app.config['REDIS'] = Redis.from_url(environ.get('REDIS_URL', 'redis://localhost:6379'))
@@ -22,7 +21,6 @@ app.config['REDIS'] = Redis.from_url(environ.get('REDIS_URL', 'redis://localhost
 @app.route('/')
 def search():
     _filter = request.args.get('filter')
-    limit = request.args.get('limit', LIMIT_DEFAULT)
     term = request.args.get('term')
     
     print(f'term: {term} | filter: {_filter}')
@@ -30,8 +28,9 @@ def search():
     if term is not None:
         term = get_embedding(term)
 
-    results, total, duration = DB.query_filings(app.config['REDIS'], term, _filter, K, limit)
+    results, total, duration = DB.query_filings(app.config['REDIS'], term, _filter, SEARCH_K)
     ret = {'results':results, 'metrics':{'duration':duration, 'total':total}}
+
     return dumps(ret)
 
 @app.route('/facets')
@@ -42,7 +41,7 @@ def facets():
         return _facets
 
     vector = get_embedding(term)
-    results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, k=K, limit=FACET_LIMIT)
+    results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, k=FACETS_K)
 
     _facets = {}
     for result in results:

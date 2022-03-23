@@ -2,6 +2,7 @@ from numpy import ndarray, float32
 from redis import Redis
 from redis.commands.search.query import Query
 from redis.commands.json.path import Path
+from redis.commands.search.commands import SEARCH_CMD, SearchCommands
 
 RETURN_FIELDS = ('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
 
@@ -14,6 +15,9 @@ def _convert_embedding_to_bytes(embedding: ndarray):
         return embedding
     else:
         return embedding.astype(float32).tobytes()
+
+def _build_search_query(index: SearchCommands, query: Query, args=None):
+    return ' '.join([SEARCH_CMD] + list(map(str, index._mk_query_args(query, args)[0])))
 
 def get_facets_for_term(r: Redis, term: str):
     return r.json().get(_key_term_facets(term))
@@ -33,7 +37,7 @@ def set_filing_obj(r: Redis, obj: dict, index: int):
 def set_embedding_on_filing_obj(r: Redis, index: int, embedding: ndarray):
     return r.hset(_key_filing(index), 'embedding', _convert_embedding_to_bytes(embedding))
 
-def query_filings(r: Redis, vector=None, _filter=None, k=10, limit=10):
+def query_filings(r: Redis, vector=None, _filter=None, k=10):
 
     if _filter is None and vector is not None:
         # only a vector to search for
@@ -56,10 +60,12 @@ def query_filings(r: Redis, vector=None, _filter=None, k=10, limit=10):
         params = {'K':k, 'VECTOR':vector_bytes}
         sort_by = '__embedding_score'
         asc = True
-
-    q = Query(query_str).paging(0, limit).sort_by(sort_by, asc=asc).return_fields(*RETURN_FIELDS)
-    results = r.ft(_key_filing('idx')).search(q, params)
-    return [result.__dict__ for result in results.docs], results.total, results.duration
+    
+    idx = r.ft(_key_filing('idx'))
+    q = Query(query_str).paging(0, k).sort_by(sort_by, asc=asc).return_fields(*RETURN_FIELDS)
+    results = idx.search(q, params)
+    print(_build_search_query(idx, q, params))
+    return [result.__dict__ for result in results.docs], len(results.docs), results.duration
 
 # def vss_index(r: Redis, metadata_fields, datatypes, dimensions):
 #     idx =  r.ft(_key_vss('idx'))
