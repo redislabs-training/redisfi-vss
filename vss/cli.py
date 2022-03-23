@@ -41,7 +41,7 @@ class CreateHTMLFileMap(Command):
             write_filemap_file(file_map, output_location)
 
 
-        flow.register('redisfi')
+        flow.run()
 
 class LoadCommand(Command):
     '''

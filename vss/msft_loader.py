@@ -13,7 +13,7 @@ from redis import Redis
 import prefect
 from prefect import task
 
-from vss.db import set_filing_obj, set_embedding_on_filing_obj, semaphore
+from vss.db import set_filing_obj, set_embedding_on_filing_obj, semaphore, set_html_for_url, get_html_for_url
 
 # "FT.CREATE" "filing:idx" "SCHEMA" "para_tag" "TEXT" "para_contents" "TEXT" "line_word_count" "TEXT" "COMPANY_NAME" "TEXT" "FILING_TYPE" "TEXT" "SIC_INDUSTRY" "TEXT" "DOC_COUNT" "NUMERIC" "CIK_METADATA" "NUMERIC" "all_capital" "NUMERIC" "FILED_DATE_YEAR" "NUMERIC" "FILED_DATE_MONTH" "NUMERIC" "FILED_DATE_DAY" "NUMERIC" "embedding" "VECTOR" "HNSW" "12" "TYPE" "FLOAT32" "DIM" "768" "DISTANCE_METRIC" "COSINE" "INITIAL_CAP" "150000" "M" "60" "EF_CONSTRUCTION" "500"
 VECTOR_DIMENSIONS = 768
@@ -197,6 +197,10 @@ def flatten_filename_sets(list_of_sets):
 def get_html_file_from_raw_file(raw_file_url: str, redis_url: str) -> tuple:
     logger = prefect.context.get('logger')
     r = Redis.from_url(redis_url)
+    html_url = get_html_for_url(r, raw_file_url)
+    if html_url:
+        return raw_file_url, html_url
+
     attempts = 0
     while True:
         if semaphore(r, SEC_MAX_PER_SECOND):
@@ -214,8 +218,9 @@ def get_html_file_from_raw_file(raw_file_url: str, redis_url: str) -> tuple:
             url_parts, _file = raw_file_url.split('/')[0:-1], raw_file_url.split('/')[-1]
             url_parts.append(_file.split('.')[0].replace('-', ''))
             url_parts.append(filename)
-            
-            return raw_file_url, '/'.join(url_parts)
+            html_url = '/'.join(url_parts)
+            set_html_for_url(r, raw_file_url, html_url)
+            return raw_file_url, html_url
         else:
             if attempts < RATE_LIMIT_ATTEMPT_MAX:
                 attempts += 1

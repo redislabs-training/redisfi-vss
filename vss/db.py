@@ -11,6 +11,7 @@ _key_filing = lambda index: f'filing:{index}'
 _key_term_facets = lambda term: f'term:{term}:facets'
 _key_term_vector = lambda term: f'term:{term}:vector'
 _key_semaphore = lambda: f'semaphore:{int(time())}'
+_key_url = lambda url: f'url:{url}'
 
 def _convert_embedding_to_bytes(embedding: ndarray):
     if type(embedding) == bytes:
@@ -31,6 +32,9 @@ def semaphore(r: Redis, max: int):
 
     return True
 
+def get_html_for_url(r: Redis, url: str):
+    return r.get(_key_url(url))
+
 def get_facets_for_term(r: Redis, term: str):
     return r.json().get(_key_term_facets(term))
 
@@ -40,6 +44,9 @@ def set_facets_for_term(r: Redis, term: str, obj: dict):
 def get_embedding_for_term(r: Redis, term: str):
     return r.get(_key_term_vector(term))
 
+def get_html_for_url(r: Redis, url: str):
+    return r.get(_key_url(url))
+
 def set_embedding_for_term(r: Redis, term: str, embedding: ndarray):
     return r.set(_key_term_vector(term), _convert_embedding_to_bytes(embedding))
 
@@ -48,6 +55,9 @@ def set_filing_obj(r: Redis, obj: dict, index: int):
 
 def set_embedding_on_filing_obj(r: Redis, index: int, embedding: ndarray):
     return r.hset(_key_filing(index), 'embedding', _convert_embedding_to_bytes(embedding))
+
+def set_html_for_url(r: Redis, raw_url: str, html_url: str):
+    return r.set(_key_url(raw_url), html_url)
 
 def query_filings(r: Redis, vector=None, _filter=None, k=10):
 
