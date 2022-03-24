@@ -22,7 +22,7 @@ METADATA_INDEX_COLUMNS=['para_tag','para_contents','line_word_count','COMPANY_NA
 SEC_MAX_PER_SECOND = 5
 SEC_URL_BASE = 'https://sec.gov/Archives/'
 RATE_LIMIT_ATTEMPT_MAX = 120
-MISSING_DOCS = ('edgar/data/1108524/0001108524-21-000014.txt', 'url:edgar/data/1108524/0001108524-20-000029.txt')
+MISSING_DOCS = ('edgar/data/1108524/0001108524-21-000014.txt', 'edgar/data/1108524/0001108524-20-000029.txt')
 
                             ######################################
                             ## TASK I: Load metadata into Redis ##
