@@ -196,7 +196,7 @@ def flatten_filename_sets(list_of_sets):
 @task(max_retries=5, retry_delay=timedelta(seconds=20), timeout=60)
 def get_html_file_from_raw_file(raw_file_url: str, redis_url: str) -> tuple:
     logger = prefect.context.get('logger')
-    
+    import pdb; pdb.set_trace()
     if raw_file_url in MISSING_DOCS: # these raw files don't exist anymore
         return raw_file_url, '/'
 
@@ -242,6 +242,14 @@ def get_html_file_from_raw_file(raw_file_url: str, redis_url: str) -> tuple:
 
 @task
 def write_filemap_file(file_map, file_location):
-    file_map_dict = dict(file_map)
+    file_map_dict = {}
+    for raw, html in file_map:
+        if type(raw) == bytes:
+            raw = raw.decode('ascii')
+        if type(html) == bytes:
+            html = html.decode('ascii')
+
+        file_map_dict[raw] = html
+
     with open(file_location, 'w') as f:
         f.write(dumps(file_map_dict))
