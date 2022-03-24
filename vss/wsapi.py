@@ -42,7 +42,7 @@ def facets():
         return _facets
 
     vector = get_embedding(term)
-    results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, k=FACETS_K)
+    results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, _filter=_filter, k=FACETS_K)
 
     _facets = {}
     for result in results:
