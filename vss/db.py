@@ -5,7 +5,7 @@ from redis.commands.search.query import Query
 from redis.commands.json.path import Path
 from redis.commands.search.commands import SEARCH_CMD, SearchCommands
 
-RETURN_FIELDS = ('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME")
+RETURN_FIELDS = ('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME", "HTTP_FILE")
 
 _key_filing = lambda index: f'filing:{index}'
 _key_term_facets = lambda term, _filter: f'term:{term}:{_filter if _filter else ""}:facets'
