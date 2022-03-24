@@ -36,7 +36,8 @@ def search():
 @app.route('/facets')
 def facets():
     term = request.args.get('term')
-    _facets = DB.get_facets_for_term(app.config['REDIS'], term)
+    _filter = request.args.get('filter')
+    _facets = DB.get_facets_for_term(app.config['REDIS'], term, _filter)
     if _facets is not None:
         return _facets
 
@@ -47,7 +48,7 @@ def facets():
     for result in results:
         _facets[result['COMPANY_NAME']] = _facets.get(result['COMPANY_NAME'], 0) + 1
     
-    DB.set_facets_for_term(app.config['REDIS'], term, _facets)
+    DB.set_facets_for_term(app.config['REDIS'], term, _filter, _facets)
 
     return _facets
 

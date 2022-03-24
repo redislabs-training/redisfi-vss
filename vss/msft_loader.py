@@ -196,6 +196,7 @@ def flatten_filename_sets(list_of_sets):
 @task(max_retries=5, retry_delay=timedelta(seconds=20), timeout=60)
 def get_html_file_from_raw_file(raw_file_url: str, redis_url: str) -> tuple:
     logger = prefect.context.get('logger')
+    
     if raw_file_url in MISSING_DOCS: # these raw files don't exist anymore
         return raw_file_url, '/'
 
