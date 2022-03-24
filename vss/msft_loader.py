@@ -3,7 +3,7 @@ from datetime import timedelta
 from time import perf_counter, sleep
 from pickle import load
 from random import triangular
-from json import dumps
+from json import dumps, loads
 
 import requests
 from numpy import datetime64
@@ -24,6 +24,12 @@ SEC_URL_BASE = 'https://sec.gov/Archives/'
 RATE_LIMIT_ATTEMPT_MAX = 120
 MISSING_DOCS = ('edgar/data/1108524/0001108524-21-000014.txt', 'edgar/data/1108524/0001108524-20-000029.txt')
 
+def _load_http_file_map():
+    with open('data/filemap.json', 'r') as f:
+        return loads(f.read())
+
+HTTP_FILE_MAP = _load_http_file_map()
+
                             ######################################
                             ## TASK I: Load metadata into Redis ##
                             ######################################   
@@ -43,7 +49,6 @@ def load_metadata(metadata_file: str, redis_url: str, pipeline_interval: int) ->
     file_key = metadata_file.split('_')[1].split('.')[0]
 
     return (file_key, data_map['offset'])
-
 
 def _load_metadata_records(data_map: dict, redis_url: str, pipeline_interval: int):
         logger = prefect.context.get('logger')
@@ -100,9 +105,9 @@ def __build_object_from_row(row: dict) -> dict:
     obj['FILED_DATE_MONTH'] = int(row['FILED_DATE_MONTH'])
     obj['len_text'] = int(row['len_text'])
     obj['all_capital'] = int(row['all_capital'])
+    obj['HTTP_FILE'] = HTTP_FILE_MAP[obj["FILE_NAME"]]
 
     return obj
-
 
 def __fill_nas(metadata: DataFrame):
     #CLEAN UP NANs
