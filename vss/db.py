@@ -62,7 +62,7 @@ def set_html_for_url(r: Redis, raw_url: str, html_url: str):
 def query_filings(r: Redis, vector=None, _filter=None, k=10):
     if _filter is None and vector is not None:
         # only a vector to search for
-        query_str = f'*=>[TOP_K $K @embedding $VECTOR]'
+        query_str = f'*=>[KNN $K @embedding $VECTOR]'
         vector_bytes = _convert_embedding_to_bytes(vector)
         params = {'K':k, 'VECTOR':vector_bytes}
         sort_by = '__embedding_score'
@@ -76,7 +76,7 @@ def query_filings(r: Redis, vector=None, _filter=None, k=10):
         asc = False
     else:
         # search for both
-        query_str = f'({_filter})=>[TOP_K $K @embedding $VECTOR]'
+        query_str = f'({_filter})=>[KNN $K @embedding $VECTOR]'
         vector_bytes = _convert_embedding_to_bytes(vector)
         params = {'K':k, 'VECTOR':vector_bytes}
         sort_by = '__embedding_score'
