@@ -40,8 +40,9 @@ class CreateHTMLFileMap(Command):
             file_map = get_html_file_from_raw_file.map(filenames_flattened, unmapped(redis_url))
             write_filemap_file(file_map, output_location)
 
-
         flow.run()
+
+        #get_html_file_from_raw_file.run('edgar/data/882184/0000882184-19-000022.txt', redis_url)
 
 class LoadCommand(Command):
     '''

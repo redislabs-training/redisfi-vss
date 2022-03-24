@@ -207,11 +207,18 @@ def get_html_file_from_raw_file(raw_file_url: str, redis_url: str) -> tuple:
             logger.info(raw_file_url)
             resp = requests.get(SEC_URL_BASE + raw_file_url, 
                                 headers={'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.82 Safari/537.36'},
-                                timeout=30)
+                                timeout=30, stream=True)
 
-            resp.raise_for_status()
+            if resp.status_code != 200:
+                raise Exception(f'HTTP Call Failed: {resp}\n{resp.text}')
+
+            filename = None
+            for line in resp.iter_lines():
+                match = search('<FILENAME>(.*)', line.decode('ascii'))
+                if match:
+                    filename = match.group(1)
+                    break
             
-            filename = search('<FILENAME>(.*)', resp.text).group(1)
             if not filename:
                 raise Exception(f'filename not found in raw file: {raw_file_url}')
 
