@@ -13,7 +13,7 @@ from vss import db as DB
 SCORE_URL = 'https://mpnetemb.eastus2.inference.ml.azure.com/score'
 SCORE_API_KEY = 'Qimsm7lN1kTWdS7heH2MbT9HPuo7vyOv'
 SEARCH_K = 1000
-FACETS_K = 15000
+FACETS_K = 10000
 
 app = Flask(__name__)
 app.config['REDIS'] = Redis.from_url(environ.get('REDIS_URL', 'redis://localhost:6379'))

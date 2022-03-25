@@ -1,11 +1,12 @@
 from time import time
 from numpy import ndarray, float32
+
 from redis import Redis
 from redis.commands.search.query import Query
 from redis.commands.json.path import Path
 from redis.commands.search.commands import SEARCH_CMD, SearchCommands
 
-RETURN_FIELDS = ('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME", "HTTP_FILE")
+RETURN_FIELDS = ('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME", "HTTP_FILE", "FILING_TYPE")
 
 _key_filing = lambda index: f'filing:{index}'
 _key_term_facets = lambda term, _filter: f'term:{term}:{_filter if _filter else ""}:facets'
