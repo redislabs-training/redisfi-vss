@@ -62,13 +62,13 @@ class LoadCommand(Command):
         redis_url = environ.get('VSS_REDIS_URL', self.option('redis-url'))
 
         self.line(f'<info>Found</info> <comment>{len(metadata_files)}</comment> <info>metadata files</info>')
-        start = perf_counter()
-    
+        
         with Flow('loader', executor=DaskExecutor()) as flow:
             file_keys_and_offsets = load_metadata.map(*(metadata_files, unmapped(redis_url), unmapped(pipeline_interval)))
             load_embeddings.map(*(file_keys_and_offsets, unmapped(redis_url), unmapped(pipeline_interval/reduction_factor)))
 
         self.line('<error>Handing off to Prefect/Dask</error>')
+        start = perf_counter()
         flow.run()
         end = perf_counter()
         self.line(f'<info>Flow Completed! Total Execution Time:</info> <comment>{end-start:0.2f} seconds</comment>')

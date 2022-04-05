@@ -11,7 +11,7 @@ from redis import Redis
 from vss import db as DB
 
 SCORE_URL = 'https://mpnetemb.eastus2.inference.ml.azure.com/score'
-SCORE_API_KEY = 'Qimsm7lN1kTWdS7heH2MbT9HPuo7vyOv'
+SCORE_API_KEY = 'SXugaGRZGpMyBt0ctMbOvAvQysmk4Ei4'
 SEARCH_K = 1000
 FACETS_K = 10000
 
