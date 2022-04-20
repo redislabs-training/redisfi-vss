@@ -40,7 +40,7 @@ def get_facets_for_term(r: Redis, term: str, _filter: str):
     return r.json().get(_key_term_facets(term, _filter))
 
 def set_facets_for_term(r: Redis, term: str, _filter: str, obj: dict):
-    return r.json().set(_key_term_facets(term, _filter), Path.rootPath(), obj)
+    return r.json().set(_key_term_facets(term, _filter), Path.root_path(), obj)
 
 def get_embedding_for_term(r: Redis, term: str):
     return r.get(_key_term_vector(term))
@@ -84,7 +84,7 @@ def query_filings(r: Redis, vector=None, _filter=None, k=10):
         asc = True
     
     idx = r.ft(_key_filing('idx'))
-    q = Query(query_str).paging(0, k).sort_by(sort_by, asc=asc).return_fields(*RETURN_FIELDS)
+    q = Query(query_str).paging(0, k).sort_by(sort_by, asc=asc).return_fields(*RETURN_FIELDS).dialect(2)
     results = idx.search(q, params)
     print(_build_search_query(idx, q, params))
     return [result.__dict__ for result in results.docs], len(results.docs), results.duration

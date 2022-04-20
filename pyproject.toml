@@ -12,12 +12,12 @@ python = "^3.8"
 cleo = "^0.8.1"
 pandas = "^1.4.1"
 numpy = "^1.22.3"
-redis = "4.1.4"
 pyarrow = "^7.0.0"
 fastparquet = "^0.8.0"
 prefect = "^1.1.0"
 Flask = "^2.0.3"
 gunicorn = "^20.1.0"
+redis = {git = "https://github.com/redis/redis-py.git", rev = "v4.2.2"}
 
 [tool.poetry.dev-dependencies]
 
