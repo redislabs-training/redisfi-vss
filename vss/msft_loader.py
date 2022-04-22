@@ -5,6 +5,7 @@ from pickle import load
 from random import triangular
 from json import dumps, loads
 from subprocess import Popen
+from shutil import move
 
 import requests
 from numpy import datetime64
@@ -38,7 +39,13 @@ def download_data():
         if p.returncode != 0:
             raise Exception('error downloading data')
 
-    
+    with Popen(['tar', 'xvf', '/tmp/data.tar']) as p:
+        p.communicate()
+        if p.returncode != 0:
+            raise Exception('error extracting data')
+
+    move('/tmp/01/*.parquet', 'data/.')
+    move('/tmp/01/*.pkl', 'data/.')
 
                             ######################################
                             ## TASK I: Load metadata into Redis ##
