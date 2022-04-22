@@ -6,6 +6,7 @@ from random import triangular
 from json import dumps, loads
 from subprocess import Popen
 from shutil import move
+from glob import glob
 
 import requests
 from numpy import datetime64
@@ -39,13 +40,14 @@ def download_data():
         if p.returncode != 0:
             raise Exception('error downloading data')
 
-    with Popen(['tar', 'xvf', '/tmp/data.tar']) as p:
+    with Popen(['tar', 'xvf', '/tmp/data.tar' '--directory', '/tmp']) as p:
         p.communicate()
         if p.returncode != 0:
             raise Exception('error extracting data')
+    
+    for file in glob('/tmp/01/*.parquet') + glob('/tmp/01/*.pkl'):
+        move(file, 'data/.')
 
-    move('/tmp/01/*.parquet', 'data/.')
-    move('/tmp/01/*.pkl', 'data/.')
 
                             ######################################
                             ## TASK I: Load metadata into Redis ##
