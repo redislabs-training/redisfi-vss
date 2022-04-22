@@ -40,7 +40,7 @@ def download_data():
         if p.returncode != 0:
             raise Exception('error downloading data')
 
-    with Popen(['tar', 'xvf', '/tmp/data.tar' '--directory', '/tmp']) as p:
+    with Popen(['tar', 'xvf', '/tmp/data.tar', '--directory', '/tmp']) as p:
         p.communicate()
         if p.returncode != 0:
             raise Exception('error extracting data')
