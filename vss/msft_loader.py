@@ -5,7 +5,7 @@ from pickle import load
 from random import triangular
 from json import dumps, loads
 from subprocess import Popen
-from shutil import move
+from os import symlink
 from glob import glob
 
 import requests
@@ -46,7 +46,7 @@ def download_data():
             raise Exception('error extracting data')
     
     for file in glob('/tmp/01/*.parquet') + glob('/tmp/01/*.pkl'):
-        move(file, 'data/.')
+        symlink(file, 'data/.')
 
 
                             ######################################
