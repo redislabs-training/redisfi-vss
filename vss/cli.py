@@ -11,7 +11,8 @@ from vss.msft_loader import (load_metadata,
                              get_filenames_from_parquets, 
                              flatten_filename_sets, 
                              get_html_file_from_raw_file,
-                             write_filemap_file)
+                             write_filemap_file,
+                             download_data)
 
 from vss.wsapi import run as run_wsapi
 
@@ -56,6 +57,15 @@ class LoadCommand(Command):
     def handle(self):
 
         metadata_files = glob('data/metadata*')
+    
+        if not metadata_files:
+            if self.confirm('data files missing. Download? (7.3GB)', True):
+                download_data()
+                metadata_files = glob('data/metadata*')
+            else:
+                self.line('Ok, Have a Good Day!')
+                return 1
+                
         pipeline_interval = int(self.option('pipeline-interval'))
         reduction_factor = int(self.option('reduction-factor'))
 

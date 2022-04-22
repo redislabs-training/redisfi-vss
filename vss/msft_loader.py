@@ -4,6 +4,7 @@ from time import perf_counter, sleep
 from pickle import load
 from random import triangular
 from json import dumps, loads
+from subprocess import Popen
 
 import requests
 from numpy import datetime64
@@ -29,6 +30,15 @@ def _load_http_file_map():
         return loads(f.read())
 
 HTTP_FILE_MAP = _load_http_file_map()
+
+def download_data():
+    
+    with Popen(['wget', 'https://storage.googleapis.com/redisfi/data.tar', '-P', '/tmp']) as p:
+        p.communicate()
+        if p.returncode != 0:
+            raise Exception('error downloading data')
+
+    
 
                             ######################################
                             ## TASK I: Load metadata into Redis ##
