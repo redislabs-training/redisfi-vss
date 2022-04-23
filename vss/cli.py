@@ -12,7 +12,8 @@ from vss.msft_loader import (load_metadata,
                              flatten_filename_sets, 
                              get_html_file_from_raw_file,
                              write_filemap_file,
-                             download_data)
+                             download_data,
+                             create_index)
 
 from vss.wsapi import run as run_wsapi
 
@@ -70,7 +71,8 @@ class LoadCommand(Command):
         reduction_factor = int(self.option('reduction-factor'))
 
         redis_url = environ.get('VSS_REDIS_URL', self.option('redis-url'))
-
+        self.info(f'Creating index if needed')
+        create_index(redis_url)
         self.line(f'<info>Found</info> <comment>{len(metadata_files)}</comment> <info>metadata files</info>')
         
         with Flow('loader', executor=DaskExecutor()) as flow:
