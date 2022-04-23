@@ -6,6 +6,7 @@ from random import triangular
 from json import dumps, loads
 from subprocess import Popen
 from os import symlink
+from os.path import split
 from glob import glob
 
 import requests
@@ -46,7 +47,7 @@ def download_data():
             raise Exception('error extracting data')
     
     for file in glob('/tmp/01/*.parquet') + glob('/tmp/01/*.pkl'):
-        symlink(file, 'data/.')
+        symlink(file, f'data/{split(file)[1]}')
 
 
                             ######################################
