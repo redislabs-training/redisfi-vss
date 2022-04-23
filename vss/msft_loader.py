@@ -44,7 +44,7 @@ def create_index(redis_url: str):
     except ResponseError:
         pass
     
-    r.execute_command(["FT.CREATE", "filing:idx", "SCHEMA", "para_tag", "TEXT", "para_contents", "TEXT", "line_word_count", "TEXT", "COMPANY_NAME", "TEXT", "FILING_TYPE", "TEXT", "SIC_INDUSTRY", "TEXT", "DOC_COUNT", "NUMERIC", "CIK_METADATA", "NUMERIC", "all_capital", "NUMERIC", "FILED_DATE_YEAR", "NUMERIC", "FILED_DATE_MONTH", "NUMERIC", "FILED_DATE_DAY", "NUMERIC", "embedding", "VECTOR", "HNSW", "12", "TYPE", "FLOAT32", "DIM", "768", "DISTANCE_METRIC", "COSINE", "INITIAL_CAP", "150000", "M", "60", "EF_CONSTRUCTION", "500"])
+    r.execute_command(*["FT.CREATE", "filing:idx", "SCHEMA", "para_tag", "TEXT", "para_contents", "TEXT", "line_word_count", "TEXT", "COMPANY_NAME", "TEXT", "FILING_TYPE", "TEXT", "SIC_INDUSTRY", "TEXT", "DOC_COUNT", "NUMERIC", "CIK_METADATA", "NUMERIC", "all_capital", "NUMERIC", "FILED_DATE_YEAR", "NUMERIC", "FILED_DATE_MONTH", "NUMERIC", "FILED_DATE_DAY", "NUMERIC", "embedding", "VECTOR", "HNSW", "12", "TYPE", "FLOAT32", "DIM", "768", "DISTANCE_METRIC", "COSINE", "INITIAL_CAP", "150000", "M", "60", "EF_CONSTRUCTION", "500"])
 
 def download_data():
     
