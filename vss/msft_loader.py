@@ -20,7 +20,6 @@ from prefect import task
 
 from vss.db import set_filing_obj, set_embedding_on_filing_obj, semaphore, set_html_for_url, get_html_for_url
 
-# "FT.CREATE" "filing:idx" "SCHEMA" "para_tag" "TEXT" "para_contents" "TEXT" "line_word_count" "TEXT" "COMPANY_NAME" "TEXT" "FILING_TYPE" "TEXT" "SIC_INDUSTRY" "TEXT" "DOC_COUNT" "NUMERIC" "CIK_METADATA" "NUMERIC" "all_capital" "NUMERIC" "FILED_DATE_YEAR" "NUMERIC" "FILED_DATE_MONTH" "NUMERIC" "FILED_DATE_DAY" "NUMERIC" "embedding" "VECTOR" "HNSW" "12" "TYPE" "FLOAT32" "DIM" "768" "DISTANCE_METRIC" "COSINE" "INITIAL_CAP" "150000" "M" "60" "EF_CONSTRUCTION" "500"
 VECTOR_DIMENSIONS = 768
 METADATA_NA_COLUMNS=['para_tag','COMPANY_NAME','SIC_INDUSTRY','SIC','FILING_TYPE']
 METADATA_INDEX_COLUMNS=['para_tag','para_contents','line_word_count','COMPANY_NAME','FILING_TYPE','SIC_INDUSTRY','DOC_COUNT','CIK_METADATA','all_capital','FILED_DATE_YEAR','FILED_DATE_MONTH','FILED_DATE_DAY']
@@ -28,6 +27,7 @@ SEC_MAX_PER_SECOND = 5
 SEC_URL_BASE = 'https://sec.gov/Archives/'
 RATE_LIMIT_ATTEMPT_MAX = 120
 MISSING_DOCS = ('edgar/data/1108524/0001108524-21-000014.txt', 'edgar/data/1108524/0001108524-20-000029.txt')
+INDEX_NAME = 'filing:idx'
 
 def _load_http_file_map():
     with open('data/filemap.json', 'r') as f:
@@ -39,12 +39,12 @@ def create_index(redis_url: str):
     r = Redis.from_url(redis_url)
 
     try:
-        r.ft('filing:idx').info()
+        r.ft(INDEX_NAME).info()
         return
     except ResponseError:
         pass
     
-    r.execute_command(*["FT.CREATE", "filing:idx", "SCHEMA", "para_tag", "TEXT", "para_contents", "TEXT", "line_word_count", "TEXT", "COMPANY_NAME", "TEXT", "FILING_TYPE", "TEXT", "SIC_INDUSTRY", "TEXT", "DOC_COUNT", "NUMERIC", "CIK_METADATA", "NUMERIC", "all_capital", "NUMERIC", "FILED_DATE_YEAR", "NUMERIC", "FILED_DATE_MONTH", "NUMERIC", "FILED_DATE_DAY", "NUMERIC", "embedding", "VECTOR", "HNSW", "12", "TYPE", "FLOAT32", "DIM", "768", "DISTANCE_METRIC", "COSINE", "INITIAL_CAP", "150000", "M", "60", "EF_CONSTRUCTION", "500"])
+    r.execute_command(*["FT.CREATE", INDEX_NAME, "SCHEMA", "para_tag", "TEXT", "para_contents", "TEXT", "line_word_count", "TEXT", "COMPANY_NAME", "TAG", "FILING_TYPE", "TEXT", "SIC_INDUSTRY", "TEXT", "DOC_COUNT", "NUMERIC", "CIK_METADATA", "NUMERIC", "all_capital", "NUMERIC", "FILED_DATE_YEAR", "NUMERIC", "FILED_DATE_MONTH", "NUMERIC", "FILED_DATE_DAY", "NUMERIC", "embedding", "VECTOR", "HNSW", "12", "TYPE", "FLOAT32", "DIM", "768", "DISTANCE_METRIC", "COSINE", "INITIAL_CAP", "150000", "M", "60", "EF_CONSTRUCTION", "500"])
 
 def download_data():
     
