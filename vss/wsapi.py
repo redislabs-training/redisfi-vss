@@ -54,7 +54,7 @@ def facets():
 
 @app.route('/healthcheck')
 def healthcheck():
-    return str(app.config['REDIS'].ping())
+    return str(int(app.config['REDIS'].get('vss-loader') or b'0'))
 
 def get_embedding(term: str):
     embedding = DB.get_embedding_for_term(app.config['REDIS'], term)

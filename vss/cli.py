@@ -13,7 +13,10 @@ from vss.msft_loader import (load_metadata,
                              get_html_file_from_raw_file,
                              write_filemap_file,
                              download_data,
-                             create_index)
+                             create_index, 
+                             mark_loader_started,
+                             mark_loader_completed,
+                             mark_loader_failed)
 
 from vss.wsapi import run as run_wsapi
 
@@ -74,7 +77,8 @@ class LoadCommand(Command):
         self.info(f'Creating index if needed')
         create_index(redis_url)
         self.line(f'<info>Found</info> <comment>{len(metadata_files)}</comment> <info>metadata files</info>')
-        
+
+        mark_loader_started(redis_url)
         with Flow('loader', executor=DaskExecutor()) as flow:
             file_keys_and_offsets = load_metadata.map(*(metadata_files, unmapped(redis_url), unmapped(pipeline_interval)))
             load_embeddings.map(*(file_keys_and_offsets, unmapped(redis_url), unmapped(pipeline_interval/reduction_factor)))
@@ -82,8 +86,13 @@ class LoadCommand(Command):
         self.line('<error>Handing off to Prefect/Dask</error>')
         start = perf_counter()
         result = flow.run()
-        print(result)
         end = perf_counter()
+        
+        if result.is_successful():
+            mark_loader_completed(redis_url)
+        else:
+            mark_loader_failed(redis_url)
+
         self.line(f'<info>Flow Completed! Total Execution Time:</info> <comment>{end-start:0.2f} seconds</comment>')
 
 class RunCommand(Command):

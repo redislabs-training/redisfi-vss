@@ -61,6 +61,18 @@ def download_data():
     for file in glob('/tmp/01/*.parquet') + glob('/tmp/01/*.pkl'):
         symlink(file, f'data/{split(file)[1]}')
 
+def mark_loader_started(redis_url:str):
+    r = Redis.from_url(redis_url)
+    r.set('vss-loader', 0)
+
+def mark_loader_completed(redis_url:str):
+    r = Redis.from_url(redis_url)
+    r.set('vss-loader', 1)
+
+def mark_loader_failed(redis_url:str):
+    r = Redis.from_url(redis_url)
+    r.set('vss-loader', -1)
+
 
                             ######################################
                             ## TASK I: Load metadata into Redis ##
@@ -78,7 +90,8 @@ def load_metadata(metadata_file: str, redis_url: str, pipeline_interval: int) ->
     logger.info(f'file contained {len(data_map["records"])} records - transforming and loading into redis')
     _load_metadata_records(data_map, redis_url, pipeline_interval)
     
-    file_key = metadata_file.split('_')[1].split('.')[0]
+    _file_key = metadata_file.split('_')[1:]
+    file_key = '_'.join(_file_key).split('.')[0]
 
     return (file_key, data_map['offset'])
 
