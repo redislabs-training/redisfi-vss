@@ -81,7 +81,8 @@ class LoadCommand(Command):
 
         self.line('<error>Handing off to Prefect/Dask</error>')
         start = perf_counter()
-        flow.run()
+        result = flow.run()
+        print(result)
         end = perf_counter()
         self.line(f'<info>Flow Completed! Total Execution Time:</info> <comment>{end-start:0.2f} seconds</comment>')
 
