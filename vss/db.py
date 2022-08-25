@@ -1,4 +1,6 @@
 from time import time
+from json import dumps
+
 from numpy import ndarray, float32
 
 from redis import Redis
@@ -8,6 +10,7 @@ from redis.commands.search.commands import SEARCH_CMD, SearchCommands
 
 RETURN_FIELDS = ('COMPANY_NAME','para_contents','FILED_DATE', "FILE_NAME", "HTTP_FILE", "FILING_TYPE")
 
+_key_commands    = lambda guid: f'commands:{guid}'
 _key_filing = lambda index: f'filing:{index}'
 _key_term_facets = lambda term, _filter: f'term:{term}:{_filter if _filter else ""}:facets'
 _key_term_vector = lambda term: f'term:{term}:vector'
@@ -60,7 +63,7 @@ def set_embedding_on_filing_obj(r: Redis, index: int, embedding: ndarray):
 def set_html_for_url(r: Redis, raw_url: str, html_url: str):
     return r.set(_key_url(raw_url), html_url)
 
-def query_filings(r: Redis, vector=None, _filter=None, k=10):
+def query_filings(r: Redis, vector=None, _filter=None, k=10, log_guid=None, export_redis=None):
     if _filter is None and vector is not None:
         # only a vector to search for
         query_str = f'*=>[KNN $K @embedding $VECTOR]'
@@ -84,9 +87,25 @@ def query_filings(r: Redis, vector=None, _filter=None, k=10):
         asc = True
     
     idx = r.ft(_key_filing('idx'))
+
     q = Query(query_str).paging(0, k).sort_by(sort_by, asc=asc).return_fields(*RETURN_FIELDS).dialect(2)
     results = idx.search(q, params)
-    print(_build_search_query(idx, q, params))
+    if export_redis is None:
+        export_redis = r
+
+    query = _build_search_query(idx, q, params)
+    if vector is not None:
+        query = query.replace(str(vector_bytes), '&lt;vector_bytes&gt;')
+
+    set_or_print_commands(export_redis, log_guid, query, results.duration)
+
     return [result.__dict__ for result in results.docs], len(results.docs), results.duration
 
-
+def set_or_print_commands(redis: Redis, guid: str, command: str, time=0):
+    print(command)
+    if guid is not None:
+        if type(command) is not str:
+            command = dumps(command)
+        redis.xadd(_key_commands(guid), {'command':command, 'time':time})
+    else:
+        print(command)

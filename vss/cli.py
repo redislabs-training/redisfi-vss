@@ -101,14 +101,17 @@ class RunCommand(Command):
 
     run
         {--debug : Runs the Debug Server}
-        {--H|redis-url=redis://localhost:6379 : Redis URL - can also set with VSS_REDIS_URL env var}
+        {--redis-url=redis://localhost:6379 : Redis URL - can also set with VSS_REDIS_URL env var}
+        {--command-export-redis-url=redis://localhost:6379 : Redis URL for Command exports - can also set with REDIS_URL env var}
     '''
     def handle(self):
         debug = self.option('debug')
         redis_url = environ.get('VSS_REDIS_URL', self.option('redis-url'))
+        export_redis_url = environ.get('REDIS_URL', self.option('command-export-redis-url'))
         self.line(f'<info>Redis URL:</info> <comment>{redis_url}</comment>')
+        self.line(f'<info>Export Redis URL:</info> <comment>{export_redis_url}</comment>')
         
-        run_wsapi(debug=debug, redis_url=redis_url)
+        run_wsapi(debug=debug, redis_url=redis_url, export_redis_url=export_redis_url)
 
 
 def run():

@@ -6,7 +6,7 @@ from urllib.request import Request, urlopen
 
 import numpy as np
 from flask import Flask, request
-from redis import Redis
+from redis import Redis, ResponseError
 
 from vss import db as DB
 
@@ -17,19 +17,25 @@ FACETS_K = 10000
 
 app = Flask(__name__)
 app.config['REDIS'] = Redis.from_url(environ.get('REDIS_URL', 'redis://localhost:6379'))
+app.config['EXPORT_REDIS'] = Redis.from_url(environ.get('EXPORT_REDIS_URL', 'redis://localhost:6379'))
 
 @app.route('/')
 def search():
     _filter = request.args.get('filter')
     term = request.args.get('term')
+    log_guid = request.args.get('log_guid')
     
     print(f'term: {term} | filter: {_filter}')
 
     if term is not None:
         term = get_embedding(term)
-
-    results, total, duration = DB.query_filings(app.config['REDIS'], term, _filter, SEARCH_K)
-    ret = {'results':results, 'metrics':{'duration':duration, 'total':total}}
+    try:
+        results, total, duration = DB.query_filings(app.config['REDIS'], term, _filter, SEARCH_K, log_guid=log_guid, export_redis=app.config['EXPORT_REDIS'])
+        ret = {'results':results, 'metrics':{'duration':duration, 'total':total}}
+    except ResponseError:
+        import traceback
+        traceback.print_exc()
+        ret = {'results':[] , 'metrics':{'duration':0, 'total':0}}
 
     return dumps(ret)
 
@@ -40,9 +46,11 @@ def facets():
     _facets = DB.get_facets_for_term(app.config['REDIS'], term, _filter)
     if _facets is not None:
         return _facets
-
-    vector = get_embedding(term)
-    results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, _filter=_filter, k=FACETS_K)
+    try:
+        vector = get_embedding(term)
+        results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, _filter=_filter, k=FACETS_K)
+    except ResponseError:
+        results = []
 
     _facets = {}
     for result in results:
@@ -78,7 +86,7 @@ def get_embedding(term: str):
         print(error.info())
         print(loads(error.read().decode("utf8", 'ignore')))
 
-def run(debug=False, redis_url='redis://'):
+def run(debug=False, redis_url='redis://', export_redis_url='redis://'):
     # This is ultimately a hack around the way the flask debug server works
     # and a way of baking the overall gunicorn run command into the CLI.
     #
@@ -88,6 +96,7 @@ def run(debug=False, redis_url='redis://'):
 
     env = environ.copy()
     env['REDIS_URL'] = redis_url
+    env['EXPORT_REDIS_URL'] = export_redis_url
 
     if debug:
         with Popen(['poetry', 'run', 'python3', 'vss/wsapi.py'], env=env) as _app:
