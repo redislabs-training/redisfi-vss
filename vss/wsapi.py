@@ -7,11 +7,11 @@ from urllib.request import Request, urlopen
 import numpy as np
 from flask import Flask, request
 from redis import Redis, ResponseError
+from sentence_transformers import SentenceTransformer
 
 from vss import db as DB
 
-SCORE_URL = 'https://mpnetemb.eastus2.inference.ml.azure.com/score'
-SCORE_API_KEY = 'SXugaGRZGpMyBt0ctMbOvAvQysmk4Ei4'
+MODEL = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
 SEARCH_K = 1000
 FACETS_K = 10000
 
@@ -64,28 +64,17 @@ def facets():
 def healthcheck():
     return str(int(app.config['REDIS'].get('vss-loader') or b'0'))
 
+@app.route('/get_embedding/<string:term>')
 def get_embedding(term: str):
     embedding = DB.get_embedding_for_term(app.config['REDIS'], term)
     if embedding is not None:
         return embedding
-
-    ## This doesn't work with requests and I couldn't figure out why
-    headers = {'Content-Type':'application/json', 'Authorization':f'Bearer {SCORE_API_KEY}'}
-    data = {'data':term}
-    body = str.encode(dumps(data))
-    req = Request(SCORE_URL, body, headers)
-
-    try:
-        response = urlopen(req)
-        embedding = np.fromstring(load(response)[1:-1], dtype=np.float32, sep=',')
-        
-        DB.set_embedding_for_term(app.config['REDIS'], term, embedding)
-        return embedding
-    except HTTPError as error:
-        print("The request failed with status code: " + str(error.code))
-        print(error.info())
-        print(loads(error.read().decode("utf8", 'ignore')))
-
+    
+    embedding = MODEL.encode(term)
+    DB.set_embedding_for_term(app.config['REDIS'], term, embedding)
+    
+    return embedding
+   
 def run(debug=False, redis_url='redis://', export_redis_url='redis://'):
     # This is ultimately a hack around the way the flask debug server works
     # and a way of baking the overall gunicorn run command into the CLI.
