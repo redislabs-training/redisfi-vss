@@ -3,7 +3,7 @@
 RedisFI VSS is a data loader/microservice to facilitate the VSS part of [RedisFI](https://github.com/redislabs-training/redisfi).  It is a search engine on top of a collection of SEC 10K-Q documents that were vectorized by Microsoft's Enterprise Data Science team (who has graciously allowed us to share them with this project) using [all-mpnet-base-v2](https://huggingface.co/sentence-transformers/all-mpnet-base-v2).
 
 ## Prereqs
-Both forms require [Python 3.9](https://stackoverflow.com/a/66907362) (not above) and [Poetry](https://python-poetry.org)
+Requires [Python 3.9](https://stackoverflow.com/a/66907362) (not above) and [Poetry](https://python-poetry.org)
 
 ## Setup 
 
