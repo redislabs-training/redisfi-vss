@@ -64,15 +64,15 @@ def facets():
 def healthcheck():
     return str(int(app.config['REDIS'].get('vss-loader') or b'0'))
 
-@app.route('/get_embedding/<string:term>')
 def get_embedding(term: str):
     embedding = DB.get_embedding_for_term(app.config['REDIS'], term)
     if embedding is not None:
         return embedding
     
     embedding = MODEL.encode(term)
-    DB.set_embedding_for_term(app.config['REDIS'], term, embedding)
-    
+
+    DB.set_embedding_for_term(app.config['REDIS'], term, embedding)  
+
     return embedding
    
 def run(debug=False, redis_url='redis://', export_redis_url='redis://'):
