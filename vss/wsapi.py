@@ -1,10 +1,6 @@
 from os import environ
 from subprocess import Popen
-from json import dumps, load, loads
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
-
-import numpy as np
+from json import dumps
 from flask import Flask, request
 from redis import Redis, ResponseError
 from sentence_transformers import SentenceTransformer
