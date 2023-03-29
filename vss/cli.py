@@ -1,10 +1,12 @@
 from os import environ
 from glob import glob
-from time import perf_counter
+from time import perf_counter, sleep
 
 from prefect import Flow, unmapped
 from prefect.executors import DaskExecutor
 from cleo import Application, Command
+from clikit.api.io.flags import DEBUG
+from redis.exceptions import ConnectionError
 
 from vss.msft_loader import (load_metadata,
                              load_embeddings, 
@@ -57,6 +59,7 @@ class LoadCommand(Command):
         {--r|redis-url=redis://localhost:6379 : Location of the Redis to Load to - can also set with VSS_REDIS_URL env var}
         {--pipeline-interval=50000 : Amount to break data load into for pipeline}
         {--reduction-factor=3 : Amount to divide pipeline by for embedding load}
+        {--retry-count=20 : Number of times to retry redis for index creation}
     '''
     def handle(self):
 
@@ -74,10 +77,29 @@ class LoadCommand(Command):
         reduction_factor = int(self.option('reduction-factor'))
 
         redis_url = environ.get('VSS_REDIS_URL', self.option('redis-url'))
-        self.info(f'Creating index if needed')
-        create_index(redis_url)
-        self.line(f'<info>Found</info> <comment>{len(metadata_files)}</comment> <info>metadata files</info>')
+        retry_count = int(self.option('retry-count'))
+        with self.spin(f'<info>Connecting to Redis @ <comment>{redis_url}</info>', f'<info>Connected to Redis @ <comment>{redis_url}</info>'):
+            success = False
+            tries = 0
+            while not success:
+                try:
+                    create_index(redis_url)
+                    success = True
+                except ConnectionError as e:
+                    self.line(f'<error>Error creating index: {e}</error>', verbosity=DEBUG)
+                    tries += 1
+                    self.line(f'<error>Waiting 10 seconds and trying again - {tries} of {retry_count}</error>', verbosity=DEBUG)
+                    
+                    if tries >= retry_count:
+                        self.line(f'\n<error>Failed to connect to Redis after {retry_count} tries</error>')
+                        raise
+                    
+                    sleep(10)
+                    
 
+        
+        self.info('Index Created!')
+        self.line(f'<info>Found</info> <comment>{len(metadata_files)}</comment> <info>metadata files</info>')
         mark_loader_started(redis_url)
         with Flow('loader', executor=DaskExecutor()) as flow:
             file_keys_and_offsets = load_metadata.map(*(metadata_files, unmapped(redis_url), unmapped(pipeline_interval)))
