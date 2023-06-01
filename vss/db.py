@@ -1,4 +1,4 @@
-from time import time
+from time import time, perf_counter
 from json import dumps
 
 from numpy import ndarray, float32
@@ -39,20 +39,42 @@ def semaphore(r: Redis, max: int):
 def get_html_for_url(r: Redis, url: str):
     return r.get(_key_url(url))
 
-def get_facets_for_term(r: Redis, term: str, _filter: str):
-    return r.json().get(_key_term_facets(term, _filter))
+def get_facets_for_term(r: Redis, term: str, _filter: str, log_guid=None, export_redis=None):
+    start = perf_counter()
+    facets = r.json().get(_key_term_facets(term, _filter))
+    time = _get_time(start)
+    if export_redis is None:
+        export_redis = r
+    set_or_print_commands(export_redis, log_guid, f'JSON.GET {_key_term_facets(term, _filter)}', time)
+    return facets
 
-def set_facets_for_term(r: Redis, term: str, _filter: str, obj: dict):
-    return r.json().set(_key_term_facets(term, _filter), Path.root_path(), obj)
+def set_facets_for_term(r: Redis, term: str, _filter: str, obj: dict, log_guid=None, export_redis=None):
+    start = perf_counter()
+    r.json().set(_key_term_facets(term, _filter), Path.root_path(), obj)
+    time = _get_time(start)
+    if export_redis is None:
+        export_redis = r
+    set_or_print_commands(export_redis, log_guid, f'JSON.SET {_key_term_facets(term, _filter)} {Path.root_path()}', time)
 
-def get_embedding_for_term(r: Redis, term: str):
-    return r.get(_key_term_vector(term))
+def get_embedding_for_term(r: Redis, term: str, log_guid=None, export_redis=None):
+    start = perf_counter()
+    embedding = r.get(_key_term_vector(term))
+    time = _get_time(start)
+    if export_redis is None:
+        export_redis = r
+    set_or_print_commands(export_redis, log_guid, f'GET {_key_term_vector(term)}', time)
+    return embedding
+
+def set_embedding_for_term(r: Redis, term: str, embedding: ndarray, log_guid=None, export_redis=None):
+    start = perf_counter()
+    r.set(_key_term_vector(term), _convert_embedding_to_bytes(embedding))
+    time = _get_time(start)
+    if export_redis is None:
+        export_redis = r
+    set_or_print_commands(export_redis, log_guid, f'SET {_key_term_vector(term)} &lt;vector_bytes&gt;', time)
 
 def get_html_for_url(r: Redis, url: str):
     return r.get(_key_url(url))
-
-def set_embedding_for_term(r: Redis, term: str, embedding: ndarray):
-    return r.set(_key_term_vector(term), _convert_embedding_to_bytes(embedding))
 
 def set_filing_obj(r: Redis, obj: dict, index: int):
     return r.hmset(_key_filing(index), obj)
@@ -102,10 +124,13 @@ def query_filings(r: Redis, vector=None, _filter=None, k=10, log_guid=None, expo
     return [result.__dict__ for result in results.docs], len(results.docs), results.duration
 
 def set_or_print_commands(redis: Redis, guid: str, command: str, time=0):
-    print(command)
     if guid is not None:
         if type(command) is not str:
             command = dumps(command)
         redis.xadd(_key_commands(guid), {'command':command, 'time':time})
     else:
         print(command)
+        
+def _get_time(start):
+    end = perf_counter()
+    return (end-start)*1000

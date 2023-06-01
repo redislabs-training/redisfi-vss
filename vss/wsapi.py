@@ -24,7 +24,7 @@ def search():
     print(f'term: {term} | filter: {_filter}')
 
     if term is not None:
-        term = get_embedding(term)
+        term = get_embedding(term, log_guid)
     try:
         results, total, duration = DB.query_filings(app.config['REDIS'], term, _filter, SEARCH_K, log_guid=log_guid, export_redis=app.config['EXPORT_REDIS'])
         ret = {'results':results, 'metrics':{'duration':duration, 'total':total}}
@@ -37,14 +37,15 @@ def search():
 
 @app.route('/facets')
 def facets():
+    log_guid = request.args.get('log_guid')
     term = request.args.get('term')
     _filter = request.args.get('filter')
-    _facets = DB.get_facets_for_term(app.config['REDIS'], term, _filter)
+    _facets = DB.get_facets_for_term(app.config['REDIS'], term, _filter, log_guid=log_guid, export_redis=app.config['EXPORT_REDIS'])
     if _facets is not None:
         return _facets
     try:
         vector = get_embedding(term)
-        results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, _filter=_filter, k=FACETS_K)
+        results, _, _ = DB.query_filings(app.config['REDIS'], vector=vector, _filter=_filter, k=FACETS_K, log_guid=log_guid, export_redis=app.config['EXPORT_REDIS'])
     except ResponseError:
         results = []
 
@@ -52,7 +53,7 @@ def facets():
     for result in results:
         _facets[result['COMPANY_NAME']] = _facets.get(result['COMPANY_NAME'], 0) + 1
     
-    DB.set_facets_for_term(app.config['REDIS'], term, _filter, _facets)
+    DB.set_facets_for_term(app.config['REDIS'], term, _filter, _facets, log_guid=log_guid, export_redis=app.config['EXPORT_REDIS'])
 
     return _facets
 
@@ -60,14 +61,14 @@ def facets():
 def healthcheck():
     return str(int(app.config['REDIS'].get('vss-loader') or b'0'))
 
-def get_embedding(term: str):
-    embedding = DB.get_embedding_for_term(app.config['REDIS'], term)
+def get_embedding(term: str, log_guid=None):
+    embedding = DB.get_embedding_for_term(app.config['REDIS'], term, log_guid=log_guid, export_redis=app.config['EXPORT_REDIS'])
     if embedding is not None:
         return embedding
     
     embedding = MODEL.encode(term)
 
-    DB.set_embedding_for_term(app.config['REDIS'], term, embedding)  
+    DB.set_embedding_for_term(app.config['REDIS'], term, embedding, log_guid=log_guid, export_redis=app.config['EXPORT_REDIS'])  
 
     return embedding
    

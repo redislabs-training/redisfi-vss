@@ -13,6 +13,8 @@ RUN poetry install
 RUN mv poetry.lock poetry.lock.bak
 COPY . .
 RUN mv poetry.lock.bak poetry.lock
+
+## downloads model dependancies for ML libs
 RUN poetry run VSS
 ENV PYTHONUNBUFFERED=1
 
